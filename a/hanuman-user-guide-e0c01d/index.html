@@ -1,0 +1,393 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Hanuman — User Guide</title>
+<meta property="og:title" content="Hanuman — User Guide">
+<meta property="og:description" content="Written 26 Sep 2026. Every &quot;verified&quot; claim below was produced by a real tool call, not inferred. Section 10 lists what I have not verified — read it before tru">
+<meta property="og:type" content="article">
+<style>
+:root{color-scheme:light dark}
+body{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;margin:0;background:#fafafa;color:#1a1a1a;line-height:1.65}
+main{max-width:44rem;margin:0 auto;padding:2.5rem 1.25rem 4rem}
+h1,h2,h3,h4{line-height:1.25;margin:1.6em 0 .6em}
+h1{font-size:1.7rem;margin-top:0}h2{font-size:1.35rem}h3{font-size:1.15rem}
+p{margin:.9em 0}
+a{color:#0b5fff}
+pre{background:#f1f1f1;border:1px solid #e2e2e2;border-radius:.5rem;padding:1rem;overflow-x:auto;font-size:.88rem;line-height:1.5}
+code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.88em}
+p code,li code,td code{background:rgba(0,0,0,.07);padding:.15em .4em;border-radius:.3rem}
+pre code{background:none;padding:0}
+blockquote{border-left:3px solid #d0d0d0;margin:1.2em 0;padding:.1em 0 .1em 1em;color:#555}
+table{border-collapse:collapse;width:100%;margin:1.2em 0;font-size:.92rem}
+th,td{border:1px solid #ddd;padding:.5em .75em;text-align:left}
+th{background:rgba(0,0,0,.04)}
+img{max-width:100%;border-radius:.5rem}
+hr{border:none;border-top:1px solid #e0e0e0;margin:2em 0}
+footer{margin-top:3rem;font-size:.75rem;color:#888}
+@media (prefers-color-scheme:dark){
+body{background:#141414;color:#e8e8e8}
+a{color:#7aa7ff}
+pre{background:#1f1f1f;border-color:#333}
+p code,li code,td code{background:rgba(255,255,255,.1)}
+blockquote{border-color:#444;color:#aaa}
+th,td{border-color:#3a3a3a}th{background:rgba(255,255,255,.05)}
+hr{border-color:#333}
+}
+</style>
+</head>
+<body>
+<main>
+<h1>Hanuman — User Guide</h1>
+<p><em>Written 26 Sep 2026. Every &quot;verified&quot; claim below was produced by a real tool call, not inferred. Section 10 lists what I have <strong>not</strong> verified — read it before trusting a corner of this document.</em></p>
+<hr>
+<h2>1. The 60-second version</h2>
+<p>Hanuman is an assistant that can <strong>remember</strong>, <strong>build and deploy things</strong>, <strong>run work on a schedule</strong>, and <strong>watch for change</strong>.</p>
+<p>Most requests are one sentence. No command syntax needed:</p>
+<blockquote>
+<p>&quot;What&#39;s the Wordle app link?&quot; · &quot;Remind me to call the dentist at 6pm&quot; · &quot;Find me current durable goods data&quot; · &quot;Build me a stopwatch and send me the URL&quot;</p>
+</blockquote>
+<p>Be terse. Commands are final — Hanuman acts on them rather than re-clarifying. If something is genuinely ambiguous or irreversible, he asks first; otherwise he just does it.</p>
+<hr>
+<h2>2. Mental model: four things to know</h2>
+<table>
+<thead>
+<tr>
+<th>Thing</th>
+<th>What it is</th>
+<th>Where it lives</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Memory</strong></td>
+<td>Durable facts and dated notes about you</td>
+<td>Across sessions</td>
+</tr>
+<tr>
+<td><strong>Artifacts</strong></td>
+<td>Editable documents / pages / app bookmarks</td>
+<td>Artifacts tab, shareable by link</td>
+</tr>
+<tr>
+<td><strong>Apps</strong></td>
+<td>Deployed, URL-addressable software</td>
+<td>App garden, on a managed port</td>
+</tr>
+<tr>
+<td><strong>Schedules</strong></td>
+<td>Reminders, agent nudges, daily digest, event hooks</td>
+<td>Your timezone (America/New_York)</td>
+</tr>
+</tbody></table>
+<p>Everything else is a tool inside one of those four.</p>
+<hr>
+<h2>3. Memory</h2>
+<p>Three layers, and the choice matters.</p>
+<table>
+<thead>
+<tr>
+<th>Layer</th>
+<th>Behaviour</th>
+<th>Use for</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>fact</code></td>
+<td>Curated, edited in place, deduped</td>
+<td>Durable preferences, standing rules</td>
+</tr>
+<tr>
+<td><code>log</code></td>
+<td>Appended to today&#39;s dated log</td>
+<td>Episodic notes, &quot;what happened today&quot;</td>
+</tr>
+<tr>
+<td><code>vector</code></td>
+<td>Fuzzy recall (default)</td>
+<td>Anything retrievable by meaning</td>
+</tr>
+</tbody></table>
+<p><strong>Say:</strong> <em>&quot;Remember that I prefer terse answers with evidence.&quot;</em> → <code>fact</code>
+<strong>Say:</strong> <em>&quot;Note: moved the deploy to 8082 because of the collision.&quot;</em> → <code>log</code>
+<strong>Recall:</strong> <em>&quot;What do I know about compute quotas?&quot;</em> → searches all three, ranked</p>
+<p><strong>Durable preferences</strong> live in a <code>USER.md</code>-style file loaded into every session — name, timezone, working style, standing rules like &quot;never claim a run succeeded without verification.&quot;</p>
+<p><strong>There is no memory-delete tool.</strong> Correcting a memory means saving a replacement that overwrites it. Worth knowing before you store anything you&#39;d rather not keep.</p>
+<hr>
+<h2>4. Artifacts</h2>
+<p>Use an artifact whenever the output is something you&#39;ll <strong>read, edit, or share</strong> — a report, a spec, a doc. Don&#39;t dump a long report into chat.</p>
+<p>Three kinds:</p>
+<ul>
+<li><code>document</code> — markdown. The default for reports and docs.</li>
+<li><code>page</code> — HTML. Interactive one-offs.</li>
+<li><code>app</code> — a bookmark pointing at an app-garden app (the garden owns the runtime; it isn&#39;t rebuilt).</li>
+</ul>
+<p><strong>Key property: edits never destroy history.</strong> Every <code>artifact_edit</code> appends a new version with your note attached.</p>
+<pre><code>artifact_create  → artifact_edit (v2)  → artifact_get version:1  ← original still intact
+</code></pre>
+<p>Verified: version count 1 → 2, v1 retained its original content byte-for-byte.</p>
+<p><strong>Sharing:</strong> <code>artifact_share</code> returns a read-only link (<code>/a/&lt;token&gt;</code>) anyone can open. <code>artifact_revoke</code> kills it — omit the token to revoke all links at once.</p>
+<p><strong>Workflow:</strong> create → open the URL in a browser to confirm it renders → edit as the document firms up → share.</p>
+<hr>
+<h2>5. Apps</h2>
+<h3>The one-call path (use this)</h3>
+<p><code>app_scaffold</code> writes every file, runs the build, starts the service, and self-verifies — all in a single call.</p>
+<pre><code>app_scaffold(name, files[], steps[], command, port?, expect_text)
+</code></pre>
+<p><code>expect_text</code> is <strong>not optional in practice.</strong> It&#39;s a distinctive string the finished page must contain. After start, the deployed page is fetched and checked; the result reports <code>verified: true/false</code>. If false, the fix-it note tells you what to do. Never report success on an unverified self-test.</p>
+<p>Verified end-to-end: one call wrote a file, started it on a free port, and returned <code>verified: true</code>, HTTP 200 — confirmed independently by <code>app_verify</code>.</p>
+<h3>The manual path (for existing apps)</h3>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>Job</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>app_entry</code></td>
+<td><strong>Which file does the build actually compile?</strong> Check this before editing</td>
+</tr>
+<tr>
+<td><code>app_build</code></td>
+<td>The compile gate. <code>ok:false</code> carries the real compiler output</td>
+</tr>
+<tr>
+<td><code>app_start</code></td>
+<td>Start a new app or redeploy an existing one</td>
+</tr>
+<tr>
+<td><code>app_restart</code></td>
+<td>Clean relaunch on the same port. Prefer this over stop+start</td>
+</tr>
+<tr>
+<td><code>app_verify</code></td>
+<td>Independent fetch. Run it before telling the user it works</td>
+</tr>
+<tr>
+<td><code>app_logs</code></td>
+<td><strong>Read this before diagnosing any misbehaviour</strong></td>
+</tr>
+<tr>
+<td><code>app_stop</code></td>
+<td>Kill it. Reports <code>strays</code> and <code>portFree</code></td>
+</tr>
+<tr>
+<td><code>app_checkpoint</code></td>
+<td>Commit current files to git as a rollback point</td>
+</tr>
+<tr>
+<td><code>app_keep_awake</code></td>
+<td>Opt into 24/7 — <strong>read the cost disclosure first</strong></td>
+</tr>
+<tr>
+<td><code>app_delete</code></td>
+<td>Gated — requires approval</td>
+</tr>
+</tbody></table>
+<h3>Ports</h3>
+<p>Ports are machine-managed:</p>
+<ul>
+<li><strong>New app:</strong> omit <code>port</code>. The registry assigns one deterministically.</li>
+<li><strong>Existing app:</strong> omit it. The registered port is reused. <strong>Passing a different port is refused structurally.</strong></li>
+<li>If you do pass a port, the command must listen on <em>that exact port</em> and bind <code>0.0.0.0</code>.</li>
+</ul>
+<p><strong>Gotcha (hit during testing):</strong> two apps can end up registered on the same port and publish the <strong>identical</strong> public URL. Only one can ever serve. <code>tictactoe</code> and <code>socialnews_connector</code> are both on 8080 right now.</p>
+<h3>Checkpoint and rollback</h3>
+<p>Every start auto-commits the tree and reports the commit as <code>checkpoint</code>. A successful start is recorded as the last-known-good point; if a later redeploy fails to boot over a previously running app, the tree is <strong>restored</strong> and the previous version relaunches.</p>
+<p><strong>If <code>rolledBack: true</code> appears, the new code is NOT running.</strong> Read the evidence before reacting.</p>
+<p><strong>Observed quirk:</strong> Wordle returned <code>rolledBack: true</code> with a diagnosis claiming its directory didn&#39;t exist — the directory was present, intact, and serving HTTP 200 moments later. Treat <code>rolledBack</code> as a strong signal to <em>check the real state</em>, not as proof of failure.</p>
+<hr>
+<h2>6. Scheduled work</h2>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>What it does</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>remind</code></td>
+<td>Pushes <strong>you</strong> a reminder at a time you pick</td>
+</tr>
+<tr>
+<td><code>followup</code></td>
+<td>Nudges <strong>Hanuman</strong> — &quot;I&#39;ll check that tonight&quot;</td>
+</tr>
+<tr>
+<td><code>briefing_set</code></td>
+<td>Daily morning digest, at an <code>HH:MM</code> in your timezone</td>
+</tr>
+<tr>
+<td><code>reminder_list</code></td>
+<td>Pending and recently fired items</td>
+</tr>
+<tr>
+<td><code>reminder_cancel</code></td>
+<td>Cancel by id</td>
+</tr>
+<tr>
+<td><code>hook_create</code></td>
+<td>Fire when data <strong>changes</strong> (see §7)</td>
+</tr>
+</tbody></table>
+<p>Times: pass an ISO 8601 <code>at</code>, or <code>in_minutes</code> for a simple offset. Quiet hours are respected — a 1am reminder is held silently until 7am and never buzzes your phone at night.</p>
+<p><strong>The briefing</strong> digests overnight hook firings, scheduled-task runs, finished tasks, and unread alerts. It lands as push + an outbox entry + a &quot;Daily briefing&quot; chat thread. <code>briefing_get</code> shows the current setting; <code>briefing_set</code> with <code>enabled:false</code> turns it off without losing the time.</p>
+<p><strong>Standing rule:</strong> scheduled work stays quiet unless something materially moved. A briefing that fires every morning with nothing in it is a bug, not a feature.</p>
+<hr>
+<h2>7. Event hooks — &quot;tell me when X changes&quot;</h2>
+<p>Evaluated when new data arrives on a source. <strong>Event-driven, not on a timer.</strong></p>
+<pre><code>hook_sources   →  see the valid names and whether each is polled
+hook_create(source, condition, surface)
+</code></pre>
+<p><strong>The <code>condition</code> is a material-change gate</strong> — this is what stops noise:</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>fields</code></td>
+<td>Dot-paths to watch. Omit to fire on any deep change</td>
+</tr>
+<tr>
+<td><code>threshold</code></td>
+<td>How much counts as a change</td>
+</tr>
+<tr>
+<td><code>mode</code></td>
+<td><code>abs</code> or <code>pct</code></td>
+</tr>
+</tbody></table>
+<p><strong>Surfaces:</strong></p>
+<ul>
+<li><code>chat</code> — posts into your &quot;Hook alerts&quot; conversation</li>
+<li><code>push</code> — queues to a pollable outbox (<code>GET /hooks/outbox</code>)</li>
+<li><code>silent-log</code> — records the event, delivers nothing</li>
+</ul>
+<p><strong>First evaluation only sets the baseline and never fires.</strong> So you won&#39;t get an alert the moment a hook is created — the first <em>real</em> change is the first alert.</p>
+<p><code>hook_list</code> shows your hooks and their fire stats. <code>hook_mute</code> stops delivery without deleting. <code>hook_delete</code> is gated — requires approval.</p>
+<p><strong>Call <code>hook_sources</code> first.</strong> Only sources the platform has actually registered are valid. In this deployment <code>news</code> is registered (polled, 900s); <code>prices</code> and <code>gmail</code> are <strong>not</strong>, and asking for them fails with <code>unknown source</code>.</p>
+<hr>
+<h2>8. Credentials, skills, and approvals</h2>
+<h3>Vault</h3>
+<p>Encrypted storage for API keys and similar. <code>vault_store(scope, name, value)</code> returns an opaque handle (<code>vlt_…</code>) — <strong>the raw value is never returned, and Hanuman can never read it back or echo it.</strong> <code>vault_list</code> shows handles and metadata only.</p>
+<p>In production, secrets enter through a dedicated UI capture form, never through chat; the vault tool is for server-side seeding.</p>
+<p><strong>There is no vault-delete tool.</strong> Entries persist once created.</p>
+<h3>Skills</h3>
+<p>Drop-in capability packs — instructions plus optional runnable helpers.</p>
+<ul>
+<li><code>skill_search(query)</code> — returns each hit&#39;s <code>SKILL.md</code> path <strong>and its full instructions inline</strong>. The file-read tool can&#39;t reach the skills directory, so instructions ride along in the search result.</li>
+<li><code>skill_save(name, description, whenToUse, instructions)</code> — or pass a raw <code>skillMd</code>. Optional <code>scripts[]</code> must be named <code>bin/&lt;safe-filename&gt;</code>.</li>
+<li><code>skill_delete(name)</code> — user packs only; global packs are unaffected.</li>
+</ul>
+<p>A user pack with the same name <strong>shadows</strong> the global one. Hits are tagged <code>scope: &quot;user&quot;</code> or <code>&quot;global&quot;</code>.</p>
+<h3>Approvals (gated actions)</h3>
+<p>Send, publish, pay, and delete are gated. The flow:</p>
+<pre><code>approval_request(action, preview)
+  → approval_id
+  → the user sees your exact preview
+  → approval_approve(id) → one-time approval_token
+  → retry the gated call with the token
+</code></pre>
+<p><code>approval_reject(id)</code> cancels it. <code>approvals_pending</code> lists what&#39;s waiting.</p>
+<p><strong>The preview must be exact</strong> — the real recipient, subject, and body for a send. That string is what the user approves, so anything vague there is a real failure.</p>
+<p>This is the <em>only</em> flow where Hanuman pauses to ask. Everything else proceeds immediately.</p>
+<hr>
+<h2>9. Reading the web</h2>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>Use for</th>
+<th>Cost</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>web_search</code></td>
+<td>Anything you don&#39;t already know or that may have changed</td>
+<td>Cheapest</td>
+</tr>
+<tr>
+<td><code>browse</code></td>
+<td>Reading a page — returns title, text, links, status</td>
+<td>Read-only, cheap</td>
+</tr>
+<tr>
+<td><code>scrape</code></td>
+<td>Structured extraction — modes: <code>all</code>, <code>text</code>, <code>links</code>, <code>images</code>, <code>meta</code>, <code>tables</code></td>
+<td>Read-only, cheap</td>
+</tr>
+<tr>
+<td><code>browser_navigate</code> / <code>_click</code> / <code>_type</code> / <code>_screenshot</code> / <code>_download</code></td>
+<td>Pages needing <strong>interaction</strong></td>
+<td>Real browser, slower</td>
+</tr>
+</tbody></table>
+<p><strong>Prefer <code>browse</code>/<code>scrape</code> for static pages.</strong> Use the real browser only for logins, forms, JS-driven apps, and file downloads. The browser profile is persistent per user, so <strong>logins and cookies survive restarts</strong>.</p>
+<p><strong><code>scrape</code> modes worth knowing:</strong> <code>tables</code> for tabular data, <code>contains</code> to filter links/text around a keyword, <code>images</code> for <code>src</code>+<code>alt</code>, <code>meta</code> for OG tags.</p>
+<p><strong>Search before asserting.</strong> Any current fact — a price, a release, a schedule, today&#39;s data — should be searched with the current year in the query, not recalled. If a search fails, say so plainly; don&#39;t answer from memory and present it as current.</p>
+<hr>
+<h2>10. Compute and cost</h2>
+<p>Hanuman runs on infrastructure that meters. Translate every cost into the unit that actually bills you.</p>
+<p><strong>The 24/7 trap.</strong> Apps sleep when idle by default, which is what you want. <code>app_keep_awake(on=true)</code> opts an app into always-on — and the disclosure it returns says a 2-core Codespace running 24/7 burns <strong>~1,440 core-hours/month</strong>, against the <strong>120 free core-hours</strong> on GitHub&#39;s free plan — roughly <strong>2.5 days</strong> — after which GitHub starts billing you. The default is off. Leave it off unless you have a concrete reason.</p>
+<p><strong>GPU work</strong> should be quoted in GPU-hours, <strong>Codespace</strong> in core-hours, so a recommendation is comparable against your actual quota.</p>
+<hr>
+<h2>11. Known issues (as of this writing)</h2>
+<ol>
+<li><strong>Port collision.</strong> Two apps can share port 8080 and publish the identical URL; only one serves. Currently live: <code>tictactoe</code> + <code>socialnews_connector</code>.</li>
+<li><strong><code>rolledBack: true</code> can be a false signal</strong> — an app reported as failed-to-start was actually healthy and serving.</li>
+<li><strong>No vault-delete tool.</strong></li>
+<li><strong>No memory-delete tool</strong> — overwrite instead.</li>
+<li><strong><code>scrape</code> was fragile before 26 Sep</strong> and failed 2-for-2 including on <code>example.com</code>, the simplest page on the internet, while <code>browse</code> handled the same URL fine. Fixed that day; post-fix testing was light (see §12).</li>
+<li><strong>Subagents require an OpenRouter key</strong> in Settings → Models. Without it, <code>spawn_agent</code> fails immediately with <code>Your OpenRouter API key is missing or invalid</code>.</li>
+</ol>
+<hr>
+<h2>12. What I have NOT verified</h2>
+<p>Honesty section. Each of these is untested by me and shouldn&#39;t be trusted on my say-so:</p>
+<ul>
+<li><strong>Desktop tools</strong> (<code>desktop_exec</code>, <code>desktop_screenshot</code>) — no desktop session available. Correctly opted-in, so behaviour is unknown.</li>
+<li><strong>Subagents doing real work.</strong> <code>spawn_agent</code> returned successfully, but the child made <strong>zero tool calls</strong>. Whether fan-out actually functions is unconfirmed.</li>
+<li><strong>Anything that fires.</strong> Reminders and followups were created and cancelled <em>before</em> firing. Briefing delivery and hook firing on a real news change were never observed end-to-end.</li>
+<li><strong><code>scrape</code> after its fix</strong> — only <code>example.com</code> was re-tested. Not re-run on a complex site.</li>
+<li><strong>The interactive browser suite.</strong> <code>browser_navigate</code> passes; <code>browser_click</code>, <code>browser_type</code>, <code>browser_screenshot</code>, and <code>browser_download</code> were never exercised against the working browser.</li>
+<li><strong>Artifact kind <code>app</code></strong> (the <code>appRef</code> bookmark) — never created.</li>
+<li><strong>Skill packs with <code>bin/</code> scripts</strong> — only plain-instruction packs were saved and run.</li>
+<li><strong><code>followup</code> with a <code>conversation_id</code></strong> to post into a specific thread.</li>
+<li><strong><code>app_keep_awake(on=true)</code></strong> — only read state with <code>on:false</code>, deliberately, to avoid burning your minutes.</li>
+</ul>
+<hr>
+<h2>13. Cheat sheet</h2>
+<p><strong>Everyday</strong></p>
+<pre><code>What&#39;s the &lt;app&gt; link?          Remind me to &lt;thing&gt; at &lt;time&gt;
+Find me current &lt;topic&gt;         Build me a &lt;thing&gt; and send the URL
+</code></pre>
+<p><strong>Building</strong></p>
+<pre><code>Build me a &lt;app&gt; that does &lt;X&gt;   → app_scaffold, expect_text set, verified:true
+Why is &lt;app&gt; broken?             → app_logs FIRST, then diagnose from real output
+Deploy it                       → app_build → app_restart → app_verify
+</code></pre>
+<p><strong>Watching</strong></p>
+<pre><code>Tell me when &lt;source&gt; changes    → hook_sources, then hook_create with a threshold
+                                 (first evaluation only sets the baseline)
+</code></pre>
+<p><strong>Remembering</strong></p>
+<pre><code>Remember that &lt;fact&gt;            → durable
+Note that &lt;event&gt;               → dated log
+What do you know about &lt;topic&gt;? → searches all three layers
+</code></pre>
+<p><strong>House rules that apply to everything</strong></p>
+<ul>
+<li>Never report a run, upload, push, or deploy as successful without verification.</li>
+<li>Never ship an optimization whose failure mode is silence.</li>
+<li>Read the real error before diagnosing. Quote it. Don&#39;t invent error codes, and don&#39;t blame the environment without evidence in the output.</li>
+<li>Fix the file the build actually compiles — check with <code>app_entry</code> first. Editing the near-twin silently does nothing.</li>
+</ul>
+
+<footer>Shared from Hanuman</footer>
+</main>
+</body>
+</html>
