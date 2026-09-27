@@ -44,6 +44,7 @@ hr{border-color:#333}
 <p><em>Written 26 Sep 2026 · <strong>Revised 27 Sep 2026</strong> after a code fix.</em></p>
 <p><em>Every &quot;verified&quot; claim below was produced by a real tool call, not inferred. §11 lists what is <strong>not</strong> verified — read it before trusting a corner of this document.</em></p>
 <p><strong>Revision summary:</strong> v1 was written while five tools were broken. You fixed them; all five now pass. §11 (known issues) is rewritten, §12 is updated, and §14 is new — it records two mistakes I made <em>while testing</em>, because both would have been repeated by any agent who trusted my first report.</p>
+<p><strong>v3 adds:</strong> §15 (MCP servers — registered, retested, still failing), §16 (open items on your account), and a <strong>third</strong> mistake in §14. Read §14 before you trust any of my reporting.</p>
 <hr>
 <h2>1. The 60-second version</h2>
 <p>Hanuman is an assistant that can <strong>remember</strong>, <strong>build and deploy things</strong>, <strong>run work on a schedule</strong>, and <strong>watch for change</strong>.</p>
@@ -134,6 +135,7 @@ hr{border-color:#333}
 </code></pre>
 <p>A share link always serves the <strong>latest</strong> version read-only. So editing a shared artifact updates what every existing link shows — no need to issue a new link, and no need to revoke the old one. Revoking is for cutting access, not for republishing.</p>
 <p><strong>Workflow:</strong> create → share → edit as the document firms up. Existing links pick up each revision automatically.</p>
+<p><strong><code>artifact_edit</code> takes the FULL document, not a diff.</strong> This is the single most destructive footgun in the tool. If you pass a partial document you will silently delete everything you omitted, and the call will still return <code>ok: true</code>. <strong>Before editing a document you haven&#39;t fully read, page it to the end</strong> — see §14 for how I got this wrong and nearly destroyed this guide.</p>
 <hr>
 <h2>5. Apps</h2>
 <h3>The one-call path (use this)</h3>
@@ -203,7 +205,7 @@ hr{border-color:#333}
 <p><strong>Gotcha (live on this deployment):</strong> two apps can end up registered on the same port and publish the <strong>identical</strong> public URL. Only one can ever serve. <code>tictactoe</code> and <code>socialnews_connector</code> are both on 8080 and this is still unresolved.</p>
 <p><strong>Apps can report <code>running</code> while being unreachable.</strong> The registry said <code>running</code> when <code>curl localhost:8082</code> returned HTTP 000 — the process was asleep. Verify with an actual fetch, not the registry entry, before telling anyone a link works.</p>
 <h3>Checkpoint and rollback</h3>
-<p>Every start auto-commits the tree and reports the commit as <code>checkpoint</code>. A successful start is recorded as the last-known-good point; if a later redeploy fails to boot over a previously running app, the tree is <strong>restored</strong> and the previous version relaunches.</p>
+<p>Every start auto-commits the tree and reports the commit as <code>checkpoint</code>. A successful start is recorded as the last-known-good point; if a later redeploy fails to boot over a previously running app, the tree is <strong>restored</strong> and the previous version relaunched.</p>
 <p><strong>If <code>rolledBack: true</code> appears, the new code is NOT running.</strong> Read the evidence before reacting.</p>
 <p><strong>Observed quirk:</strong> Wordle returned <code>rolledBack: true</code> with a machine diagnosis claiming its directory didn&#39;t exist and had no <code>index.html</code>/<code>package.json</code>. The directory was present, all 13 source files intact, and it was serving HTTP 200 moments later. The signal was spurious on a healthy app — so treat <code>rolledBack</code> as a reason to <em>check real state</em>, not as proof of failure. Corroborate with <code>app_verify</code> and <code>app_logs</code> before you accept a rollback story.</p>
 <hr>
@@ -279,7 +281,7 @@ hook_create(source, condition, surface)
 </ul>
 <p><strong>First evaluation only sets the baseline and never fires.</strong> So you won&#39;t get an alert the moment a hook is created — the first <em>real</em> change is the first alert.</p>
 <p><code>hook_list</code> shows your hooks and their fire stats. <code>hook_mute</code> stops delivery without deleting. <code>hook_delete</code> is gated — requires approval.</p>
-<p><strong>Call <code>hook_sources</code> first, and believe it.</strong> <code>hook_sources</code> exists, works, and is the authoritative registry. In this deployment <strong><code>news</code> is the only registered source</strong> (polled, 900s). <code>prices</code>, <code>gmail</code>, and <code>cron</code> are not registered, and asking for them fails with <code>unknown source &#39;X&#39;</code>.</p>
+<p><strong>Call <code>hook_sources</code> first, and believe it.</strong> <code>hook_sources</code> exists, works, and is the authoritative registry. In this deployment <strong><code>news</code> is the only registered source</strong> (polled, 900s). <code>prices</code>, <code>gmail</code> and <code>cron</code> are not registered, and asking for them fails with <code>unknown source &#39;X&#39;</code>.</p>
 <blockquote>
 <p><strong>Read this before you copy my old mistake.</strong> I twice reported &quot;there is no tool that lists valid sources&quot; and recommended someone build one. I had simply never called <code>hook_sources</code>. The defect was much narrower: the set of registered sources is small, not unenumerable. <strong>Verify a &quot;capability doesn&#39;t exist&quot; claim by looking for the tool before reporting it.</strong></p>
 </blockquote>
@@ -405,6 +407,7 @@ There is a billing issue that is preventing you from starting this codespace.
 <h2>12. Not verified</h2>
 <p>Everything below is untested. Absence of evidence here is not evidence of absence.</p>
 <ul>
+<li><strong>All 59 MCP tools.</strong> Registered and listed, but every call fails — see §15. Nothing in the MCP surface has ever succeeded.</li>
 <li><strong>Desktop tools</strong> (<code>desktop_exec</code>, <code>desktop_screenshot</code>, <code>desktop_stop</code>) — no desktop session was available; opt-in was correctly enforced, so the N/A proves the gate works and nothing else.</li>
 <li><strong>Subagents doing real work.</strong> <code>spawn_agent</code> now returns <code>done</code> with a result, but that was a trivial task. Nothing proves a subagent can use tools correctly, hit a rate limit, or be cancelled mid-run.</li>
 <li><strong>Anything that <em>fires</em>.</strong> No hook has ever fired, no reminder has ever delivered a push, no briefing has ever been received. Creation, listing, and cancellation are proven; <strong>delivery is not.</strong></li>
@@ -429,11 +432,73 @@ There is a billing issue that is preventing you from starting this codespace.
 <li><strong>Verify before claiming.</strong> The Wordle work is the standing example: a fix that <em>compiled</em> is not a fix that <em>works</em>. 21 end-to-end assertions in a real browser is what &quot;works&quot; means.</li>
 </ol>
 <hr>
-<h2>14. Two mistakes worth learning from</h2>
-<p>Kept deliberately, because both were mine and both would have been repeated by anyone who trusted my first report.</p>
+<h2>14. Three mistakes worth learning from</h2>
+<p>Kept deliberately, because all three were mine and all three would have been repeated by anyone who trusted my first report.</p>
 <p><strong>One — I reported a missing capability that existed.</strong> I twice wrote that no tool could list valid hook sources, and recommended building one. <code>hook_sources</code> was there and worked; I hadn&#39;t called it. I then recommended a fix for a defect that didn&#39;t exist. <em>Call the registry tool before declaring the registry inaccessible.</em></p>
 <p><strong>Two — I reported a working capability as broken.</strong> I described <code>app_restart</code> as having failed and told you the site was serving a stale build. It wasn&#39;t: the served bundle matched the newest build, and git confirmed the start commit sat on top of the build commit. One unexamined tool result became a confident claim about the system&#39;s state. <em>When a result contradicts your model, check the filesystem before you narrate it.</em></p>
-<p>The common thread: both errors came from reporting a tool&#39;s output as a <em>conclusion</em> instead of <em>evidence for</em> a conclusion. Everything else in this guide is held to the same standard — including the caveats, which are there because the alternative is a confident document that quietly misleads you.</p>
+<p><strong>Three — I claimed a tool had no pagination, twice, and nearly destroyed this guide as a result.</strong> Preparing to merge an addendum into this document, <code>artifact_get</code> returned content truncated at 10,496 characters and I concluded &quot;no offset or pagination parameter exists.&quot; <strong>It does</strong> — <code>offset</code> and <code>limit</code> are right there in the schema, and the result even reports <code>totalChars</code> and <code>hasMore</code> precisely so you can page. Because <code>artifact_edit</code> replaces the whole document, building v3 from a partial read would have silently deleted §9 through §14 and returned <code>ok: true</code> while doing it. I also told you I&#39;d &quot;read it back in pieces&quot; — a capability I was describing but had never used. I only caught it by paging properly this time. <em>Before concluding a capability is missing, read the tool&#39;s own schema and result fields.</em></p>
+<p>The common thread: every one of these errors came from reporting a tool&#39;s output as a <em>conclusion</em> instead of <em>evidence for</em> a conclusion — and in mistake three, from reporting an assumption as a verified fact. Everything else in this guide is held to the same standard — including the caveats, which are there because the alternative is a confident document that quietly misleads you.</p>
+<hr>
+<h2>15. MCP servers — registered, retested, <strong>still failing</strong></h2>
+<p>Five MCP servers appear in the agent tool manifest, 59 tools total:</p>
+<table>
+<thead>
+<tr>
+<th>Server</th>
+<th>Tools</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>filesystem-mujxjalj0</code></td>
+<td>14</td>
+<td>read/write/edit files, directory tree, glob search, move, media</td>
+</tr>
+<tr>
+<td><code>playwright-mujxjam66</code></td>
+<td>24</td>
+<td>snapshot, click, type, navigate, screenshot, network, console</td>
+</tr>
+<tr>
+<td><code>sqlite-mujxjam35</code></td>
+<td>11</td>
+<td>query, execute, schema, CRUD, transactions</td>
+</tr>
+<tr>
+<td><code>memory-mujxjals2</code></td>
+<td>9</td>
+<td>knowledge-graph entities, relations, observations, search</td>
+</tr>
+<tr>
+<td><code>sequential-thinking-mujxjaln1</code></td>
+<td>1</td>
+<td>structured deliberation</td>
+</tr>
+</tbody></table>
+<h3>Retest, 27 Sep — after the reported code fix</h3>
+<p><strong>The defect is not fixed.</strong> Two read-only calls, on two different servers, both return byte-identical errors:</p>
+<pre><code>mcp__filesystem-mujxjalj0__list_allowed_directories
+  → {&quot;ok&quot;:false,&quot;error&quot;:&quot;WRITE_PATTERNS.test is not a function&quot;}
+
+mcp__sqlite-mujxjam35__list_tables
+  → {&quot;ok&quot;:false,&quot;error&quot;:&quot;WRITE_PATTERNS.test is not a function&quot;}
+</code></pre>
+<p><code>list_allowed_directories</code> and <code>list_tables</code> are pure reads with no write path, so this is not a permissions prompt, not a scope problem, and not a config error. It is a code defect in the MCP server&#39;s <strong>write-authorization layer</strong>, which every request passes through: <code>.test()</code> is being called on a value that isn&#39;t a <code>RegExp</code> — most likely <code>WRITE_PATTERNS</code> is an array or a plain object where the guard expects regexes.</p>
+<p><strong>Fix:</strong> coerce <code>WRITE_PATTERNS</code> entries to <code>RegExp</code>, or gate the call on <code>instanceof RegExp</code>. One line, and it unblocks 59 tools.</p>
+<h3>The failure mode this exposes</h3>
+<p><strong>A manifest listing is not a working tool.</strong> All 59 MCP tools present themselves as callable. None are. This is a <em>silent</em> surface: an agent reaches for <code>mcp__filesystem__read_text_file</code>, gets that error, and loses a turn. Worse, any check that only asks &quot;is the tool present?&quot; concludes the capability works.</p>
+<p>Worth noting the duplicate: <strong>MCP Playwright duplicates the built-in <code>browser_navigate</code>/<code>_click</code>/<code>_type</code> tools, which now work natively</strong> after the fix in §11. Two paths to one capability, one of them dead. Pick a canonical one.</p>
+<hr>
+<h2>16. Open items on your account</h2>
+<p>None blocking, all of them created during testing and all still outstanding:</p>
+<ul>
+<li><strong>Daily briefing is ON at 07:30 ET.</strong> It was <code>null</code> before testing started. Turn it off with <code>briefing_set(enabled=false)</code>.</li>
+<li><strong>Hook <code>a1cbf216</code></strong> (source <code>news</code>, surface <code>chat</code>) is live and will post into your Hook alerts. <code>hook_delete</code> is gated and needs your approval.</li>
+<li><strong>Two vault entries</strong> — <code>selftest_dummy</code> and <code>selftest_roundtrip_token</code>. There is no vault-delete tool; they persist.</li>
+<li><strong>Memory canary <code>qubit-7741</code></strong> from the memory roundtrip test. No memory-delete tool either.</li>
+<li><strong>Port 8080 collision</strong> — <code>tictactoe</code> and <code>socialnews_connector</code> are both registered there and publish the identical public URL. Unresolved.</li>
+<li><strong>Dead files in <code>wordle-nyt-style/src/</code></strong> — <code>Board.js</code>, <code>Grid.js</code>, <code>Keyboard.js</code>, <code>Modal.js</code>, <code>guesses.js</code>, <code>Grid.css</code>, <code>Keyboard.css</code>, <code>styles.css</code> are imported by nothing and can be deleted.</li>
+</ul>
 <hr>
 <p><em>End of guide. Share this one; it&#39;s already linked. Edit it any time — existing links pick up new versions automatically.</em></p>
 
