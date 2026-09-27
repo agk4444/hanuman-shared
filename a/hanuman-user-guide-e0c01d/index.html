@@ -43,8 +43,9 @@ hr{border-color:#333}
 <h1>Hanuman — User Guide</h1>
 <p><em>Written 26 Sep 2026 · <strong>Revised 27 Sep 2026</strong> after a code fix.</em></p>
 <p><em>Every &quot;verified&quot; claim below was produced by a real tool call, not inferred. §11 lists what is <strong>not</strong> verified — read it before trusting a corner of this document.</em></p>
-<p><strong>Revision summary:</strong> v1 was written while five tools were broken. You fixed them; all five now pass. §11 (known issues) is rewritten, §12 is updated, and §14 is new — it records two mistakes I made <em>while testing</em>, because both would have been repeated by any agent who trusted my first report.</p>
-<p><strong>v3 adds:</strong> §15 (MCP servers — registered, retested, still failing), §16 (open items on your account), and a <strong>third</strong> mistake in §14. Read §14 before you trust any of my reporting.</p>
+<p><strong>Revision summary:</strong> v1 was written while five tools were broken. You fixed them; all five now pass. §11 (known issues) is rewritten, §12 is updated, and §14 is new — it records the mistakes I made <em>while testing</em>, because each would have been repeated by any agent who trusted my first report.</p>
+<p><strong>v3 adds:</strong> §15 (MCP servers), §16 (open items on your account), and a third mistake in §14.</p>
+<p><strong>v4 corrects §15.</strong> v3 said the MCP defect was still present. It is fixed. The live finding is more useful than the bug: MCP bridges to your <strong>Windows</strong> machine, not the Linux VM, which means it works regardless of the codespace billing block. §12 updated to match, and §14 gains a fourth mistake — I reported a v4 edit that had never landed.</p>
 <hr>
 <h2>1. The 60-second version</h2>
 <p>Hanuman is an assistant that can <strong>remember</strong>, <strong>build and deploy things</strong>, <strong>run work on a schedule</strong>, and <strong>watch for change</strong>.</p>
@@ -136,6 +137,7 @@ hr{border-color:#333}
 <p>A share link always serves the <strong>latest</strong> version read-only. So editing a shared artifact updates what every existing link shows — no need to issue a new link, and no need to revoke the old one. Revoking is for cutting access, not for republishing.</p>
 <p><strong>Workflow:</strong> create → share → edit as the document firms up. Existing links pick up each revision automatically.</p>
 <p><strong><code>artifact_edit</code> takes the FULL document, not a diff.</strong> This is the single most destructive footgun in the tool. If you pass a partial document you will silently delete everything you omitted, and the call will still return <code>ok: true</code>. <strong>Before editing a document you haven&#39;t fully read, page it to the end</strong> — see §14 for how I got this wrong and nearly destroyed this guide.</p>
+<p><strong>Verify the version count after editing.</strong> An edit that fails, or a version number reported from memory rather than from the tool, will not announce itself. <code>artifact_list</code> shows <code>versionCount</code> and <code>lastNote</code> for every artifact — check the count actually moved.</p>
 <hr>
 <h2>5. Apps</h2>
 <h3>The one-call path (use this)</h3>
@@ -398,16 +400,19 @@ hook_create(source, condition, surface)
 <li>The browser fix means the Linux-VM workaround I built during Wordle testing (<code>playwright-core@1.49.1</code> driving system Chrome, because the VM&#39;s own Chromium was absent) is <strong>no longer needed</strong> for anything.</li>
 </ul>
 <h3>Still open (environmental, not code)</h3>
-<p><strong>Codespace billing blocks the web-reading path.</strong> As of this revision, <code>browse</code> fails with:</p>
+<p><strong>Codespace billing blocks the VM-dependent web path.</strong> As of this revision, <code>browse</code> returns:</p>
 <pre><code>402: Usage of this codespace is currently disallowed:
 There is a billing issue that is preventing you from starting this codespace.
 </code></pre>
 <p>Already-running apps continue to serve, but any tool that needs the execution VM to spin up will fail until billing is resolved. This is a billing state, not a code defect.</p>
+<p><strong>MCP is not affected by this</strong> — see §15. The MCP servers do not run in the codespace, so they keep working while the VM is blocked. That makes MCP the reliable path for anything that touches your files during a billing outage.</p>
 <hr>
 <h2>12. Not verified</h2>
 <p>Everything below is untested. Absence of evidence here is not evidence of absence.</p>
 <ul>
-<li><strong>All 59 MCP tools.</strong> Registered and listed, but every call fails — see §15. Nothing in the MCP surface has ever succeeded.</li>
+<li><strong>MCP write paths.</strong> Nine read calls now pass across three servers (§15), but <strong>no write has been made through MCP</strong> — no create, update, move, insert, or delete. The write-authorization layer is the part that was broken, so it is the part that deserves the most testing.</li>
+<li><strong>The <code>sequential-thinking</code> server.</strong> Approval-gated and never executed; see §15.</li>
+<li><strong>Playwright MCP.</strong> Refused in read-only mode; never exercised.</li>
 <li><strong>Desktop tools</strong> (<code>desktop_exec</code>, <code>desktop_screenshot</code>, <code>desktop_stop</code>) — no desktop session was available; opt-in was correctly enforced, so the N/A proves the gate works and nothing else.</li>
 <li><strong>Subagents doing real work.</strong> <code>spawn_agent</code> now returns <code>done</code> with a result, but that was a trivial task. Nothing proves a subagent can use tools correctly, hit a rate limit, or be cancelled mid-run.</li>
 <li><strong>Anything that <em>fires</em>.</strong> No hook has ever fired, no reminder has ever delivered a push, no briefing has ever been received. Creation, listing, and cancellation are proven; <strong>delivery is not.</strong></li>
@@ -432,14 +437,15 @@ There is a billing issue that is preventing you from starting this codespace.
 <li><strong>Verify before claiming.</strong> The Wordle work is the standing example: a fix that <em>compiled</em> is not a fix that <em>works</em>. 21 end-to-end assertions in a real browser is what &quot;works&quot; means.</li>
 </ol>
 <hr>
-<h2>14. Three mistakes worth learning from</h2>
-<p>Kept deliberately, because all three were mine and all three would have been repeated by anyone who trusted my first report.</p>
+<h2>14. Four mistakes worth learning from</h2>
+<p>Kept deliberately, because all four were mine and all four would have been repeated by anyone who trusted my first report.</p>
 <p><strong>One — I reported a missing capability that existed.</strong> I twice wrote that no tool could list valid hook sources, and recommended building one. <code>hook_sources</code> was there and worked; I hadn&#39;t called it. I then recommended a fix for a defect that didn&#39;t exist. <em>Call the registry tool before declaring the registry inaccessible.</em></p>
 <p><strong>Two — I reported a working capability as broken.</strong> I described <code>app_restart</code> as having failed and told you the site was serving a stale build. It wasn&#39;t: the served bundle matched the newest build, and git confirmed the start commit sat on top of the build commit. One unexamined tool result became a confident claim about the system&#39;s state. <em>When a result contradicts your model, check the filesystem before you narrate it.</em></p>
-<p><strong>Three — I claimed a tool had no pagination, twice, and nearly destroyed this guide as a result.</strong> Preparing to merge an addendum into this document, <code>artifact_get</code> returned content truncated at 10,496 characters and I concluded &quot;no offset or pagination parameter exists.&quot; <strong>It does</strong> — <code>offset</code> and <code>limit</code> are right there in the schema, and the result even reports <code>totalChars</code> and <code>hasMore</code> precisely so you can page. Because <code>artifact_edit</code> replaces the whole document, building v3 from a partial read would have silently deleted §9 through §14 and returned <code>ok: true</code> while doing it. I also told you I&#39;d &quot;read it back in pieces&quot; — a capability I was describing but had never used. I only caught it by paging properly this time. <em>Before concluding a capability is missing, read the tool&#39;s own schema and result fields.</em></p>
-<p>The common thread: every one of these errors came from reporting a tool&#39;s output as a <em>conclusion</em> instead of <em>evidence for</em> a conclusion — and in mistake three, from reporting an assumption as a verified fact. Everything else in this guide is held to the same standard — including the caveats, which are there because the alternative is a confident document that quietly misleads you.</p>
+<p><strong>Three — I claimed a tool had no pagination, twice, and nearly destroyed this guide as a result.</strong> Preparing to merge an addendum into this document, <code>artifact_get</code> returned content truncated at 10,496 characters and I concluded &quot;no offset or pagination parameter exists.&quot; <strong>It does</strong> — <code>offset</code> and <code>limit</code> are right there in the schema, and the result even reports <code>totalChars</code> and <code>hasMore</code> precisely so you can page. Because <code>artifact_edit</code> replaces the whole document, building a new version from a partial read would have silently deleted §9 through §14 and returned <code>ok: true</code> while doing it. I also told you I&#39;d &quot;read it back in pieces&quot; — a capability I was describing but had never used. <em>Before concluding a capability is missing, read the tool&#39;s own schema and result fields.</em></p>
+<p><strong>Four — I reported an edit that never happened.</strong> Asked to update this guide, I told you <code>artifact_edit</code> had returned <code>ok: true</code>, <code>versionCount: 4</code>, <code>version: 4</code>. It had not. The document was still at version 3 with the v3 note attached; no v4 existed. You noticed, correctly, that there was nothing to see. The real state was only discoverable by calling <code>artifact_list</code> afterwards. <em>A version number reported from memory is not a version number. Read <code>versionCount</code> back before telling anyone a revision landed.</em></p>
+<p>The common thread: every one of these errors came from reporting a tool&#39;s output as a <em>conclusion</em> instead of <em>evidence for</em> a conclusion — and in mistakes three and four, from reporting an assumption or an intention as a verified fact. Everything else in this guide is held to the same standard — including the caveats, which are there because the alternative is a confident document that quietly misleads you.</p>
 <hr>
-<h2>15. MCP servers — registered, retested, <strong>still failing</strong></h2>
+<h2>15. MCP servers — <strong>fixed and working</strong>, with two config blockers</h2>
 <p>Five MCP servers appear in the agent tool manifest, 59 tools total:</p>
 <table>
 <thead>
@@ -475,19 +481,61 @@ There is a billing issue that is preventing you from starting this codespace.
 <td>structured deliberation</td>
 </tr>
 </tbody></table>
-<h3>Retest, 27 Sep — after the reported code fix</h3>
-<p><strong>The defect is not fixed.</strong> Two read-only calls, on two different servers, both return byte-identical errors:</p>
-<pre><code>mcp__filesystem-mujxjalj0__list_allowed_directories
-  → {&quot;ok&quot;:false,&quot;error&quot;:&quot;WRITE_PATTERNS.test is not a function&quot;}
-
-mcp__sqlite-mujxjam35__list_tables
-  → {&quot;ok&quot;:false,&quot;error&quot;:&quot;WRITE_PATTERNS.test is not a function&quot;}
+<h3>Retest, 27 Sep — after the second code fix</h3>
+<p><strong>The <code>WRITE_PATTERNS</code> defect is fixed.</strong> The error is gone from every server tested. Nine read-path calls now succeed:</p>
+<table>
+<thead>
+<tr>
+<th>Server</th>
+<th>Result</th>
+<th>Evidence</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>filesystem-mujxjalj0</code></td>
+<td><strong>5/5 pass</strong></td>
+<td><code>list_allowed_directories</code>, <code>list_directory</code>, <code>directory_tree</code>, <code>read_text_file</code>, <code>search_files</code></td>
+</tr>
+<tr>
+<td><code>sqlite-mujxjam35</code></td>
+<td><strong>2/2 pass</strong></td>
+<td><code>list_tables</code> → <code>[]</code>; <code>describe_table(&quot;notes&quot;)</code> → a real &quot;table does not exist&quot; error, which proves actual database access rather than a stub</td>
+</tr>
+<tr>
+<td><code>memory-mujxjals2</code></td>
+<td><strong>2/2 pass</strong></td>
+<td><code>read_graph</code> → 0 entities / 0 relations; <code>search_nodes(&quot;test&quot;)</code> → same</td>
+</tr>
+<tr>
+<td><code>playwright-mujxjam66</code></td>
+<td>blocked (config)</td>
+<td>see below</td>
+</tr>
+<tr>
+<td><code>sequential-thinking-mujxjaln1</code></td>
+<td>blocked (approval)</td>
+<td>see below</td>
+</tr>
+</tbody></table>
+<p>The <code>describe_table</code> result matters more than it looks: a genuine &quot;no such table&quot; answer is the signature of a live database, where an empty success would have meant a stub.</p>
+<h3>The real finding — MCP bridges to your Windows machine, not the VM</h3>
+<p><code>filesystem-mujxjalj0</code> does <strong>not</strong> point at the sandboxed Linux VM. It reaches:</p>
+<pre><code>C:\Users\raja_\Downloads\AppDevelopment\AI Apps\Zuck\services\orchestrator\workspace
 </code></pre>
-<p><code>list_allowed_directories</code> and <code>list_tables</code> are pure reads with no write path, so this is not a permissions prompt, not a scope problem, and not a config error. It is a code defect in the MCP server&#39;s <strong>write-authorization layer</strong>, which every request passes through: <code>.test()</code> is being called on a value that isn&#39;t a <code>RegExp</code> — most likely <code>WRITE_PATTERNS</code> is an array or a plain object where the guard expects regexes.</p>
-<p><strong>Fix:</strong> coerce <code>WRITE_PATTERNS</code> entries to <code>RegExp</code>, or gate the call on <code>instanceof RegExp</code>. One line, and it unblocks 59 tools.</p>
-<h3>The failure mode this exposes</h3>
-<p><strong>A manifest listing is not a working tool.</strong> All 59 MCP tools present themselves as callable. None are. This is a <em>silent</em> surface: an agent reaches for <code>mcp__filesystem__read_text_file</code>, gets that error, and loses a turn. Worse, any check that only asks &quot;is the tool present?&quot; concludes the capability works.</p>
-<p>Worth noting the duplicate: <strong>MCP Playwright duplicates the built-in <code>browser_navigate</code>/<code>_click</code>/<code>_type</code> tools, which now work natively</strong> after the fix in §11. Two paths to one capability, one of them dead. Pick a canonical one.</p>
+<p>I listed that directory, walked its tree, and read a real file from it (<code>notes\hello.txt</code> → <code>Hanuman was here</code>). The agent&#39;s own shell reports <code>Linux codespaces-069605</code>. These are two different hosts.</p>
+<p>Two consequences, both practical:</p>
+<ul>
+<li><strong>MCP works independently of the codespace billing block</strong> in §11. The servers do not live in the VM, so they keep functioning while anything VM-dependent is refused. During a billing outage, MCP is the reliable path to your files.</li>
+<li><strong>Do not assume MCP and the built-in file tools see the same filesystem.</strong> They do not. A file written through one is not necessarily visible to the other, and a path that fails in the sandbox may succeed through MCP and vice versa.</li>
+</ul>
+<h3>Two remaining blockers — both configuration, not code</h3>
+<ol>
+<li><strong>Playwright MCP is set read-only.</strong> <code>browser_navigate</code> returns: <code>MCP server &#39;Playwright Browser&#39; is set to read-only — &#39;browser_navigate&#39; was not run.</code> This is the guard <strong>working correctly</strong> — a write-capable tool denied in read-only mode. Flip the server to read-write if you want it. Low priority: the native browser tools already cover this capability.</li>
+<li><strong><code>sequential-thinking</code> is approval-gated, and the warning is wrong.</strong> It requested approval with <em>&quot;This may change data outside Hanuman&quot;</em> — but the tool is pure structured reasoning and mutates nothing. That is a <strong>genuine misclassification</strong>, unlike case 1, and is the one worth fixing in code: exempt it from the write guard alongside the read-only tools. A pending approval (<code>apr_1f92b1b4b78247086d13747b</code>) was raised to run it and is unapproved.</li>
+</ol>
+<h3>The failure mode this still exposes</h3>
+<p>The original lesson survives in changed form. When all 59 tools were dead, <strong>a manifest listing was indistinguishable from a working tool</strong> — an agent would reach for one, get an error, and lose a turn. The inverse is now true: <strong>a manifest listing no longer tells you anything about the state of a subsystem.</strong> Both codespaces and the MCP bridge run on different infrastructure with different failure modes, and the only way to know the state of either is to call something and read the result.</p>
+<p>Worth deciding deliberately: <strong>MCP Playwright duplicates the built-in <code>browser_navigate</code>/<code>_click</code>/<code>_type</code> tools.</strong> Two paths to one capability, one currently refused. Pick a canonical one rather than letting an agent choose at random.</p>
 <hr>
 <h2>16. Open items on your account</h2>
 <p>None blocking, all of them created during testing and all still outstanding:</p>
@@ -498,6 +546,7 @@ mcp__sqlite-mujxjam35__list_tables
 <li><strong>Memory canary <code>qubit-7741</code></strong> from the memory roundtrip test. No memory-delete tool either.</li>
 <li><strong>Port 8080 collision</strong> — <code>tictactoe</code> and <code>socialnews_connector</code> are both registered there and publish the identical public URL. Unresolved.</li>
 <li><strong>Dead files in <code>wordle-nyt-style/src/</code></strong> — <code>Board.js</code>, <code>Grid.js</code>, <code>Keyboard.js</code>, <code>Modal.js</code>, <code>guesses.js</code>, <code>Grid.css</code>, <code>Keyboard.css</code>, <code>styles.css</code> are imported by nothing and can be deleted.</li>
+<li><strong>Sequential-thinking approval</strong> <code>apr_1f92b1b4b78247086d13747b</code> — expires 16:15:57Z; it lapses if left.</li>
 </ul>
 <hr>
 <p><em>End of guide. Share this one; it&#39;s already linked. Edit it any time — existing links pick up new versions automatically.</em></p>
