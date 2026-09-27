@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Hanuman User Guide — Addendum A: MCP Servers (companion to guide v2)</title>
+<meta property="og:title" content="Hanuman User Guide — Addendum A: MCP Servers (companion to guide v2)">
+<meta property="og:description" content="Companion to artrQvU4esPN-h &quot;Hanuman — User Guide&quot; (v2).">
+<meta property="og:type" content="article">
+<style>
+:root{color-scheme:light dark}
+body{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;margin:0;background:#fafafa;color:#1a1a1a;line-height:1.65}
+main{max-width:44rem;margin:0 auto;padding:2.5rem 1.25rem 4rem}
+h1,h2,h3,h4{line-height:1.25;margin:1.6em 0 .6em}
+h1{font-size:1.7rem;margin-top:0}h2{font-size:1.35rem}h3{font-size:1.15rem}
+p{margin:.9em 0}
+a{color:#0b5fff}
+pre{background:#f1f1f1;border:1px solid #e2e2e2;border-radius:.5rem;padding:1rem;overflow-x:auto;font-size:.88rem;line-height:1.5}
+code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.88em}
+p code,li code,td code{background:rgba(0,0,0,.07);padding:.15em .4em;border-radius:.3rem}
+pre code{background:none;padding:0}
+blockquote{border-left:3px solid #d0d0d0;margin:1.2em 0;padding:.1em 0 .1em 1em;color:#555}
+table{border-collapse:collapse;width:100%;margin:1.2em 0;font-size:.92rem}
+th,td{border:1px solid #ddd;padding:.5em .75em;text-align:left}
+th{background:rgba(0,0,0,.04)}
+img{max-width:100%;border-radius:.5rem}
+hr{border:none;border-top:1px solid #e0e0e0;margin:2em 0}
+footer{margin-top:3rem;font-size:.75rem;color:#888}
+@media (prefers-color-scheme:dark){
+body{background:#141414;color:#e8e8e8}
+a{color:#7aa7ff}
+pre{background:#1f1f1f;border-color:#333}
+p code,li code,td code{background:rgba(255,255,255,.1)}
+blockquote{border-color:#444;color:#aaa}
+th,td{border-color:#3a3a3a}th{background:rgba(255,255,255,.05)}
+hr{border-color:#333}
+}
+</style>
+</head>
+<body>
+<main>
+<h1>Hanuman — User Guide · Addendum A</h1>
+<p><strong>Companion to <code>art_rQv_U4esPN-h</code> &quot;Hanuman — User Guide&quot; (v2).</strong>
+This addendum contains §15 and the new known issues found on 27 Sep 2026.
+It exists as a separate document because the full guide text could not be re-read losslessly at the time of writing — see &quot;Why this is not a v3&quot; at the bottom.</p>
+<p><em>Written 27 Sep 2026. Every &quot;verified&quot; claim was produced by a real tool call, not inferred.</em></p>
+<hr>
+<h2>15. MCP servers</h2>
+<p>Five MCP servers appear in the agent tool manifest, <strong>59 tools total</strong>.</p>
+<table>
+<thead>
+<tr>
+<th>Server</th>
+<th>Tools</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>filesystem-mujxjalj0</code></td>
+<td>14</td>
+<td>read/write/edit files, directory tree, glob search, move, media, allowed-directories</td>
+</tr>
+<tr>
+<td><code>playwright-mujxjam66</code></td>
+<td>24</td>
+<td>snapshot, click, type, navigate, screenshot, network, console, dialogs, drag, evaluate</td>
+</tr>
+<tr>
+<td><code>sqlite-mujxjam35</code></td>
+<td>11</td>
+<td>query, execute, schema describe, list/drop/create table, insert/update/delete, transactions</td>
+</tr>
+<tr>
+<td><code>memory-mujxjals2</code></td>
+<td>9</td>
+<td>knowledge-graph entities, relations, observations, <code>read_graph</code>, <code>search_nodes</code>, <code>open_nodes</code></td>
+</tr>
+<tr>
+<td><code>sequential-thinking-mujxjaln1</code></td>
+<td>1</td>
+<td>structured deliberation (<code>sequentialthinking</code>)</td>
+</tr>
+</tbody></table>
+<h3>Status: registered, reachable, and currently non-functional</h3>
+<p>Four of the five were called directly. <strong>Every call failed with the same server-side error:</strong></p>
+<pre><code>WRITE_PATTERNS.test is not a function
+</code></pre>
+<h3>Diagnosis</h3>
+<p>This is a <strong>code defect in the MCP server&#39;s write-authorization layer</strong>, not a permission prompt and not a configuration problem.</p>
+<p><code>.test()</code> is a <code>RegExp</code> method. It is being called on a value that is not a <code>RegExp</code> — most likely <code>WRITE_PATTERNS</code> is defined as an array or a plain object where the guard expects a collection of regexes. Because the guard sits in the shared request path, it fires on <strong>read-only calls too</strong>, which is why <code>list_allowed_directories</code> (filesystem) and <code>read_graph</code> (memory) fail exactly as hard as a write would.</p>
+<p><strong>Fix:</strong> coerce every <code>WRITE_PATTERNS</code> entry to <code>RegExp</code> at definition, or gate the call on <code>instanceof RegExp</code> before invoking <code>.test()</code>. One-line change; unblocks 59 tools across filesystem, SQLite, a knowledge graph, and a full browser.</p>
+<h3>The failure mode worth remembering</h3>
+<p><strong>A manifest listing is not a working tool.</strong> All 59 appear callable in the tool list. None are. MCP therefore presents a <em>silent</em> surface: an agent reaches for a tool, gets the error, and loses a turn. Worse, a shallow read treats &quot;the tool is listed&quot; as &quot;the tool works&quot; — which is exactly the mistake I made, in two directions, one turn after writing §14 about it:</p>
+<ol>
+<li>I reported MCP as <strong>absent</strong> because I found no instrument to observe it, without testing the tools that were plainly listed.</li>
+<li>A moment later I reported a <strong>repetition loop as if it were &quot;equation analysis&quot;</strong> in a message claiming the guide edit had succeeded. It had not. No tool call backed any of it.</li>
+</ol>
+<p>The corrective is unglamorous: <strong>a capability claim needs a call, and a completion claim needs a version number.</strong></p>
+<h3>Note on Playwright specifically</h3>
+<p>MCP Playwright (<code>playwright-mujxjam66</code>, 24 tools) duplicates the built-in browser tools, which now work natively following the earlier Playwright fix. That leaves two paths to one capability with one of them dead. Worth designating a canonical path so an agent doesn&#39;t silently pick the broken one and report a browser failure that isn&#39;t real.</p>
+<h3>Not verified</h3>
+<p>No MCP tool has been verified end-to-end. Everything above is either a manifest listing or a failure result. <strong>Deferred until the codespace quota is resolved</strong> — MCP behaviour under a live VM has not been observed.</p>
+<hr>
+<h2>16. New known issue: codespace blocked on billing (27 Sep 2026)</h2>
+<pre><code>Codespaces POST /user/codespaces/psychic-chainsaw-jjw6r4v65pqc5x44/start
+-&gt; 402: &quot;Usage of this codespace is currently disallowed:
+        There is a billing issue that is preventing you from starting this codespace.&quot;
+</code></pre>
+<p><strong>Impact:</strong> any tool that needs the execution VM to start fails. Observed on <code>execute_shell</code> and on <code>browse</code> (including a fetch of this guide&#39;s own public share URL, which lives on GitHub Pages and is unaffected by the VM&#39;s inability to boot — the <em>fetch tool</em> was the thing blocked).</p>
+<p><strong>Already-running apps still serve.</strong> Wordle stayed up through this.</p>
+<p><strong>Resolution:</strong> fix the billing issue on the codespace. Until then, treat VM-dependent tools as unavailable rather than broken, and say so rather than reporting a failure as a defect in the thing being tested.</p>
+<hr>
+<h2>17. Still open on the account</h2>
+<p>None blocking, none fixable with the current tool set:</p>
+<ul>
+<li><strong>Daily briefing is ON at 07:30 ET.</strong> It was unset (<code>null</code>) before testing. <code>briefing_set(enabled=false)</code> turns it off.</li>
+<li><strong>Hook <code>a1cbf216</code></strong> is live on source <code>news</code>, surface <code>chat</code>, and will fire into Hook alerts. <code>hook_delete</code> is gated and needs explicit approval.</li>
+<li><strong>Two vault entries persist</strong> — <code>selftest_dummy</code>, <code>selftest_roundtrip_token</code>. There is no vault-delete tool.</li>
+<li><strong>Memory canary <code>qubit-7741</code></strong> persists. There is no memory-delete tool.</li>
+<li><strong>Port 8080 collision</strong> — <code>tictactoe</code> and <code>socialnews_connector</code> are both registered on 8080 and publish an identical URL.</li>
+</ul>
+<hr>
+<h2>Why this is not a v3</h2>
+<p><code>artifact_edit</code> takes the <strong>full document</strong> as its payload, not a diff. Re-reading guide v2 returned the text <strong>truncated by the context window</strong> (10,496 characters trimmed), preserving §1–§8 and losing everything after.</p>
+<p>Writing a v3 from a partial read would have silently destroyed §9 onward — including §11 (known issues), §12 (not verified), §13 (cheat sheet), and §14 (documented mistakes) — and the edit would have reported <code>ok: true</code> and looked like a success. That is the same class of error as the two in §14, and it is worse, because it would have destroyed a document rather than merely misreported one.</p>
+<p><strong>To fold this into the guide as v3,</strong> either:</p>
+<ul>
+<li>paste the full guide text (v2 is retrievable via the share link in a browser), or</li>
+<li>keep this addendum as a standing companion — it is a complete document, not a fragment.</li>
+</ul>
+<p>There is no offset or pagination parameter on <code>artifact_get</code>, so the missing tail cannot be fetched in pieces.</p>
+<hr>
+<p><strong>Companion document:</strong> <code>art_rQv_U4esPN-h</code> — Hanuman — User Guide (v2)
+<strong>Related:</strong> <code>art_K5a-qmKrh5_D</code> — Farmfolio.io viability report (v2)</p>
+
+<footer>Shared from Hanuman</footer>
+</main>
+</body>
+</html>
